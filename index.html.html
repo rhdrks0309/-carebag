@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareBAG — 구매 후회 제로</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{background:#f8f7f4;color:#1a1814;font-family:'Noto Sans KR',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+button{font-family:'Noto Sans KR',sans-serif;cursor:pointer}
+input,select{font-family:'Noto Sans KR',sans-serif}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d4cfc8;border-radius:3px}
+
+/* ── tokens ── */
+:root{
+  --bg:#f8f7f4;--surface:#fff;--border:#e9e5df;--border-md:#d4cfc8;
+  --text:#1a1814;--sub:#6b6660;--muted:#a8a49c;
+  --accent:#1a6ef2;--accent-bg:#eff4ff;
+  --green:#0a8a5c;--green-bg:#edfaf4;--green-bd:#b8ecd6;
+  --red:#d63b3b;--red-bg:#fff0f0;--red-bd:#f5c6c6;
+  --amber:#b06800;--amber-bg:#fff7ed;--amber-bd:#fad9a8;
+  --sidebar:210px;--topbar:56px;
+  --r-sm:6px;--r:12px;--r-lg:16px;
+  --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
+  --sh:0 4px 12px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.04);
+  --sh-lg:0 16px 48px rgba(0,0,0,.1),0 4px 12px rgba(0,0,0,.06);
+}
+
+/* ── layout ── */
+#app{display:flex;flex-direction:column;min-height:100vh}
+
+.topbar{
+  position:sticky;top:0;z-index:200;height:var(--topbar);
+  background:rgba(248,247,244,.92);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:12px
+}
+.logo{font-family:Georgia,serif;font-size:20px;letter-spacing:-.3px;color:var(--text)}
+.logo span{color:var(--accent)}
+
+.mode-switch{display:flex;background:var(--border);border-radius:100px;padding:3px;gap:2px;margin-left:6px}
+.mode-btn{padding:4px 14px;border-radius:100px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--sub)}
+.mode-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--sh-sm)}
+
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+.body-wrap{display:flex;flex:1}
+
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  position:sticky;top:var(--topbar);height:calc(100vh - var(--topbar));
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:16px 12px;display:flex;flex-direction:column;overflow-y:auto
+}
+.nav-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:0 10px;margin:10px 0 4px}
+.nav-item{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;
+  border-radius:var(--r-sm);font-size:13px;font-weight:500;color:var(--sub);
+  cursor:pointer;transition:all .15s;border:none;background:transparent;width:100%;text-align:left
+}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--text);color:#fff;font-weight:600}
+.nav-icon{font-size:14px}
+.nav-badge{
+  margin-left:auto;background:var(--red);color:#fff;
+  font-size:10px;font-weight:700;padding:1px 6px;
+  border-radius:100px;min-width:18px;text-align:center
+}
+.sidebar-footer{
+  margin-top:auto;background:var(--bg);border-radius:var(--r);
+  border:1px solid var(--border);padding:14px
+}
+.sf-label{font-size:11px;color:var(--muted);margin-bottom:2px}
+.sf-value{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--green)}
+.sf-sub{font-size:11px;color:var(--muted);margin-top:1px}
+
+.main{flex:1;padding:28px 32px;min-width:0;overflow-x:hidden}
+
+/* ── views ── */
+.view{display:none}
+.view.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.page-title{font-family:Georgia,serif;font-size:28px;font-weight:400;letter-spacing:-.5px;margin-bottom:4px}
+.page-sub{color:var(--sub);font-size:14px;margin-bottom:24px}
+
+/* ── pills ── */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;border:1px solid transparent}
+.pill-green{background:var(--green-bg);color:var(--green);border-color:var(--green-bd)}
+.pill-red{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
+.pill-amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}
+.pill-blue{background:var(--accent-bg);color:var(--accent);border-color:#c2d8fd}
+.pill-gray{background:var(--bg);color:var(--sub);border-color:var(--border)}
+
+/* ── buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:all .15s;line-height:1.4}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-primary{background:var(--text);color:#fff;border-color:var(--text)}
+.btn-primary:hover{background:#2d2a24}
+.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border-md)}
+.btn-secondary:hover{border-color:var(--text)}
+.btn-green{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-green:hover{opacity:.9}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
+.btn-danger:hover{background:var(--red);color:#fff}
+
+/* ── stat cards ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh-sm)}
+.stat-label{font-size:12px;color:var(--sub);margin-bottom:8px}
+.stat-value{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;line-height:1}
+.stat-note{font-size:11px;color:var(--muted);margin-top:6px}
+
+/* ── alert banner ── */
+.alert-banner{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:var(--r);border:1px solid;margin-bottom:16px}
+.alert-banner.green{background:var(--green-bg);border-color:var(--green-bd)}
+.alert-banner.amber{background:var(--amber-bg);border-color:var(--amber-bd)}
+.alert-banner.red{background:var(--red-bg);border-color:var(--red-bd)}
+.ab-icon{font-size:18px;flex-shrink:0}
+.ab-text{flex:1}
+.ab-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.ab-sub{font-size:12px;color:var(--sub)}
+
+/* ── table ── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-sm)}
+.table-head{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--border)}
+.table-title{font-size:15px;font-weight:700}
+
+.filter-tabs{display:flex;gap:4px}
+.filter-tab{padding:5px 12px;border-radius:100px;border:1px solid transparent;font-size:12px;font-weight:600;color:var(--sub);background:transparent;cursor:pointer;transition:all .15s}
+.filter-tab:hover{background:var(--bg);border-color:var(--border-md);color:var(--text)}
+.filter-tab.active{background:var(--text);color:#fff;border-color:var(--text)}
+
+.product-row{
+  display:grid;grid-template-columns:38px 1fr 130px 90px 100px;
+  align-items:center;gap:12px;padding:13px 20px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s
+}
+.product-row:last-child{border-bottom:none}
+.product-row:hover{background:var(--bg)}
+.pr-emoji{font-size:22px;text-align:center}
+.pr-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.pr-meta{font-size:11px;color:var(--muted)}
+.pr-price{text-align:right}
+.pr-price .current{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700}
+.pr-price .original{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);text-decoration:line-through}
+.pr-cd{text-align:right}
+.pr-cd-num{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;line-height:1}
+.pr-cd-label{font-size:10px;color:var(--muted);margin-top:2px}
+.pr-action{text-align:right}
+
+/* ── empty state ── */
+.empty{text-align:center;padding:56px 20px;color:var(--sub)}
+.empty-icon{font-size:36px;opacity:.3;margin-bottom:14px}
+.empty-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.empty-desc{font-size:13px;line-height:1.7}
+
+/* ── modal ── */
+.overlay{position:fixed;inset:0;background:rgba(26,24,20,.45);backdrop-filter:blur(6px);z-index:900;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:18px;border:1px solid var(--border);width:90%;max-width:500px;box-shadow:var(--sh-lg);transform:scale(.97) translateY(8px);transition:transform .25s cubic-bezier(.34,1.3,.64,1);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.overlay.show .modal{transform:scale(1) translateY(0)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:22px 24px 0;flex-shrink:0}
+.modal-title{font-family:Georgia,serif;font-size:22px}
+.modal-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--sub);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all .15s}
+.modal-close:hover{background:var(--bg);color:var(--text)}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+.modal-footer{padding:0 24px 24px;display:flex;gap:8px;flex-shrink:0}
+.modal-footer .btn{flex:1;justify-content:center}
+
+/* ── form ── */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-bottom:5px;letter-spacing:.3px}
+.form-input,.form-select{width:100%;background:var(--bg);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;color:var(--text);outline:none;transition:all .15s}
+.form-input:focus,.form-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);background:var(--surface)}
+.form-input::placeholder{color:var(--muted)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-hint{font-size:11px;color:var(--muted);margin-top:4px}
+
+.emoji-grid{display:flex;flex-wrap:wrap;gap:6px}
+.emoji-btn{width:36px;height:36px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.emoji-btn:hover{border-color:var(--border-md);background:var(--surface)}
+.emoji-btn.sel{border-color:var(--accent);background:var(--accent-bg);transform:scale(1.1)}
+
+/* ── detail ── */
+.detail-grid{background:var(--bg);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.dr-label{color:var(--sub)}
+.dr-value{font-weight:600}
+.progress-track{height:6px;background:var(--border);border-radius:100px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:100px;transition:width .6s ease}
+
+/* ── premium ── */
+.plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px}
+.plan-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--r-lg);padding:24px}
+.plan-card.featured{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-bg)}
+.plan-name{font-size:20px;font-weight:700;margin-bottom:4px}
+.plan-price{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700}
+.plan-price span{font-size:13px;font-weight:400;color:var(--muted)}
+.plan-features{margin:20px 0;padding-top:16px;border-top:1px solid var(--border)}
+.plan-feature{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px}
+
+/* ── settings ── */
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden;box-shadow:var(--sh-sm)}
+.settings-head{padding:13px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.sr-title{font-size:13px;font-weight:600}
+.sr-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.toggle{width:40px;height:22px;border-radius:100px;background:var(--border);position:relative;cursor:pointer;transition:background .2s;border:none;flex-shrink:0}
+.toggle.on{background:var(--green)}
+.toggle::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.toggle.on::after{left:21px}
+
+/* ── admin ── */
+.admin-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.admin-table-head{display:grid;gap:10px;padding:10px 20px;background:var(--bg);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border)}
+.admin-row{display:grid;gap:10px;padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;align-items:center}
+.admin-row:last-child{border-bottom:none}
+.admin-row:hover{background:var(--bg)}
+
+.revenue-hero{background:linear-gradient(135deg,#1a6ef2,#0a52d4);border-radius:var(--r-lg);padding:28px 32px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden}
+.revenue-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:rgba(255,255,255,.06);border-radius:50%}
+.rh-label{font-size:13px;opacity:.75;margin-bottom:4px}
+.rh-value{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:700;letter-spacing:-1.5px}
+.rh-sub{font-size:12px;opacity:.6;margin-top:6px}
+
+.model-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.model-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh-sm)}
+.mc-icon{font-size:24px;margin-bottom:10px}
+.mc-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.mc-desc{font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:10px}
+.mc-amount{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;color:var(--green)}
+
+/* ── history ── */
+.history-row{display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid var(--border)}
+.history-row:last-child{border-bottom:none}
+.hi-icon{width:36px;height:36px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.hi-name{font-size:13px;font-weight:600}
+.hi-desc{font-size:11px;color:var(--muted);margin-top:1px}
+.hi-amount{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green);text-align:right}
+.hi-date{font-size:11px;color:var(--muted);text-align:right}
+
+/* ── confetti ── */
+.cp{position:fixed;pointer-events:none;z-index:9998;animation:fall linear forwards;border-radius:2px}
+@keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(540deg);opacity:0}}
+
+/* ── toast ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:10px 20px;border-radius:100px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:all .3s cubic-bezier(.34,1.4,.64,1);pointer-events:none;white-space:nowrap;box-shadow:var(--sh)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:860px){
+  .sidebar{display:none}
+  .main{padding:20px 16px}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .admin-stat-grid{grid-template-columns:1fr 1fr}
+  .model-grid{grid-template-columns:1fr}
+  .plan-grid{grid-template-columns:1fr}
+  .product-row{grid-template-columns:34px 1fr 80px}
+  .product-row .pr-action{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="logo">CareBAG<span>.</span></div>
+  <div class="mode-switch">
+    <button class="mode-btn active" id="btnUser" onclick="setMode('user')">사용자</button>
+    <button class="mode-btn" id="btnAdmin" onclick="setMode('admin')">관리자</button>
+  </div>
+  <div class="topbar-right">
+    <span class="pill pill-green" id="topSavings">💰 절약 ₩0</span>
+    <button class="btn btn-primary btn-sm" id="topAddBtn" onclick="openAdd()">+ 구매 등록</button>
+  </div>
+</header>
+
+<div class="body-wrap">
+
+<!-- USER SIDEBAR -->
+<aside class="sidebar" id="sidebarUser">
+  <div class="nav-label">메인</div>
+  <button class="nav-item active" onclick="goView('dash',this)"><span class="nav-icon">⊞</span>대시보드</button>
+  <button class="nav-item" onclick="goView('care',this)"><span class="nav-icon">◫</span>구매 케어<span class="nav-badge" id="caresBadge">0</span></button>
+  <div class="nav-label">기록·설정</div>
+  <button class="nav-item" onclick="goView('history',this)"><span class="nav-icon">↺</span>환불 히스토리</button>
+  <button class="nav-item" onclick="goView('premium',this)"><span class="nav-icon">✦</span>프리미엄</button>
+  <button class="nav-item" onclick="goView('settings',this)"><span class="nav-icon">◎</span>알림 설정</button>
+  <div class="sidebar-footer">
+    <div class="sf-label">이번 달 절약</div>
+    <div class="sf-value" id="sfVal">₩0</div>
+    <div class="sf-sub">케어백이 지켰어요 ✓</div>
+  </div>
+</aside>
+
+<!-- ADMIN SIDEBAR -->
+<aside class="sidebar" id="sidebarAdmin" style="display:none">
+  <div class="nav-label">관리자</div>
+  <button class="nav-item active" onclick="goAdminView('aDash',this)"><span class="nav-icon">⊞</span>대시보드</button>
+  <button class="nav-item" onclick="goAdminView('aUsers',this)"><span class="nav-icon">◉</span>사용자 현황</button>
+  <button class="nav-item" onclick="goAdminView('aRevenue',this)"><span class="nav-icon">◈</span>수익 모델</button>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- ── DASHBOARD ── -->
+<div id="view-dash" class="view active">
+  <div class="page-title">오늘의 케어 현황</div>
+  <div class="page-sub">구매 후회를 줄이고, 차액을 돌려받으세요</div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">📦 관리 중인 상품</div><div class="stat-value" id="sTotal">0</div><div class="stat-note">등록된 전체</div></div>
+    <div class="stat-card"><div class="stat-label">🔴 환불 임박</div><div class="stat-value" id="sUrgent" style="color:var(--red)">0</div><div class="stat-note">D-7 이내</div></div>
+    <div class="stat-card"><div class="stat-label">📉 가격 하락</div><div class="stat-value" id="sDrop" style="color:var(--green)">0</div><div class="stat-note">환불 가능</div></div>
+    <div class="stat-card"><div class="stat-label">💰 총 절약</div><div class="stat-value" id="sSavings" style="color:var(--green)">₩0</div><div class="stat-note">환불 완료 기준</div></div>
+  </div>
+  <div id="dashAlerts"></div>
+  <div class="table-wrap">
+    <div class="table-head">
+      <div class="table-title">주목 필요 상품</div>
+      <button class="btn btn-secondary btn-sm" onclick="goView('care',null)">전체 보기 →</button>
+    </div>
+    <div id="dashList"></div>
+  </div>
+</div>
+
+<!-- ── CARE ── -->
+<div id="view-care" class="view">
+  <div class="page-title">구매 케어</div>
+  <div class="page-sub">등록된 모든 상품의 가격·환불 기간을 추적해요</div>
+  <div class="table-wrap">
+    <div class="table-head">
+      <div class="table-title" id="careTitle">전체 0건</div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" onclick="setFilter('all',this)">전체</button>
+        <button class="filter-tab" onclick="setFilter('urgent',this)">환불 임박</button>
+        <button class="filter-tab" onclick="setFilter('drop',this)">가격 하락</button>
+        <button class="filter-tab" onclick="setFilter('safe',this)">안전</button>
+      </div>
+    </div>
+    <div id="careList"></div>
+  </div>
+</div>
+
+<!-- ── HISTORY ── -->
+<div id="view-history" class="view">
+  <div class="page-title">환불 히스토리</div>
+  <div class="page-sub">케어백으로 절약한 금액을 모두 확인하세요</div>
+  <div class="table-wrap" id="historyWrap"></div>
+</div>
+
+<!-- ── PREMIUM ── -->
+<div id="view-premium" class="view">
+  <div class="page-title">프리미엄 플랜</div>
+  <div class="page-sub">더 많은 상품을 관리하고 자동 가격 추적을 사용하세요</div>
+  <div class="plan-grid">
+    <div class="plan-card">
+      <div class="plan-name">무료</div>
+      <div class="plan-price">₩0<span>/월</span></div>
+      <div class="plan-features">
+        <div class="plan-feature"><span style="color:var(--muted);font-size:12px">✓</span> 상품 5개 등록</div>
+        <div class="plan-feature"><span style="color:var(--muted);font-size:12px">✓</span> 수동 가격 입력</div>
+        <div class="plan-feature"><span style="color:var(--muted);font-size:12px">✓</span> 환불 기간 추적</div>
+        <div class="plan-feature"><span style="color:var(--muted);font-size:12px">✓</span> 기본 알림</div>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="toast('✓ 현재 무료 플랜 사용 중')">현재 플랜</button>
+    </div>
+    <div class="plan-card featured">
+      <span class="pill pill-blue" style="margin-bottom:12px;display:inline-flex">추천</span>
+      <div class="plan-name">프리미엄</div>
+      <div class="plan-price" style="color:var(--accent)">₩4,900<span>/월</span></div>
+      <div class="plan-features">
+        <div class="plan-feature"><span style="color:var(--green);font-size:12px">✓</span> 상품 무제한 등록</div>
+        <div class="plan-feature"><span style="color:var(--green);font-size:12px">✓</span> 가격 자동 추적 (예정)</div>
+        <div class="plan-feature"><span style="color:var(--green);font-size:12px">✓</span> 우선순위 알림</div>
+        <div class="plan-feature"><span style="color:var(--green);font-size:12px">✓</span> CSV 내보내기</div>
+        <div class="plan-feature"><span style="color:var(--green);font-size:12px">✓</span> 광고 없음</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="toast('🚀 결제 페이지로 이동합니다! (준비 중)')">업그레이드</button>
+    </div>
+  </div>
+  <div class="alert-banner amber" style="max-width:680px;margin-top:20px">
+    <span class="ab-icon">💡</span>
+    <div class="ab-text">
+      <div class="ab-title">가격 자동 추적은 네이버 쇼핑 API 연동 후 제공 예정</div>
+      <div class="ab-sub">지금은 구매 시 현재가를 직접 입력하면 즉시 하락 감지가 됩니다.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SETTINGS ── -->
+<div id="view-settings" class="view">
+  <div class="page-title">알림 설정</div>
+  <div class="page-sub">나에게 맞는 알림을 설정하세요</div>
+  <div class="settings-card">
+    <div class="settings-head">📲 푸시 알림</div>
+    <div class="settings-row"><div><div class="sr-title">가격 하락 즉시 알림</div><div class="sr-sub">구매가보다 낮아지면 바로 알려드려요</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="settings-row"><div><div class="sr-title">환불 마감 D-7 알림</div><div class="sr-sub">환불 가능 기간 7일 전 알림</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="settings-row"><div><div class="sr-title">환불 마감 D-1 알림</div><div class="sr-sub">하루 전 강력 경고</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="settings-row"><div><div class="sr-title">주간 절약 리포트</div><div class="sr-sub">매주 월요일 요약 리포트</div></div><button class="toggle" onclick="this.classList.toggle('on')"></button></div>
+  </div>
+  <div class="settings-card">
+    <div class="settings-head">💸 가격 하락 기준</div>
+    <div class="settings-row">
+      <div><div class="sr-title">알림 기준 하락률</div><div class="sr-sub">이 비율 이상 내려가야 알림</div></div>
+      <select class="form-select" style="width:130px"><option>1% 이상</option><option selected>3% 이상</option><option>5% 이상</option><option>10% 이상</option></select>
+    </div>
+  </div>
+  <div class="settings-card">
+    <div class="settings-head">🗑️ 데이터</div>
+    <div class="settings-row"><div><div class="sr-title">모든 데이터 초기화</div><div class="sr-sub">등록 상품 및 히스토리 전체 삭제</div></div><button class="btn btn-danger btn-sm" onclick="resetAll()">초기화</button></div>
+  </div>
+</div>
+
+<!-- ── ADMIN DASH ── -->
+<div id="view-aDash" class="view">
+  <div class="page-title">관리자 대시보드</div>
+  <div class="page-sub">전체 서비스 현황을 모니터링하세요</div>
+  <div class="admin-stat-grid">
+    <div class="stat-card"><div class="stat-label">👥 총 가입 유저</div><div class="stat-value" id="aUsers">854</div><div class="stat-note">+12 이번 주</div></div>
+    <div class="stat-card"><div class="stat-label">📦 등록 총 상품</div><div class="stat-value" id="aItems">0</div><div class="stat-note">전체 유저 기준</div></div>
+    <div class="stat-card"><div class="stat-label">💸 총 절약 금액</div><div class="stat-value" id="aSaved" style="color:var(--green)">₩0</div><div class="stat-note">환불 완료 합계</div></div>
+    <div class="stat-card"><div class="stat-label">📉 가격 하락 감지</div><div class="stat-value" id="aDrops">0</div><div class="stat-note">현재 추적 중</div></div>
+    <div class="stat-card"><div class="stat-label">⏰ 환불 임박</div><div class="stat-value" id="aUrgent" style="color:var(--red)">0</div><div class="stat-note">D-7 이내</div></div>
+    <div class="stat-card"><div class="stat-label">🔄 환불 완료</div><div class="stat-value" id="aRefunds">0</div><div class="stat-note">전체 누적</div></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-head"><div class="table-title">최근 등록 상품 (전체 유저)</div></div>
+    <div class="admin-table-head" style="grid-template-columns:36px 1fr 90px 100px 90px 80px">
+      <div></div><div>상품명</div><div>쇼핑몰</div><div style="text-align:right">구매가</div><div style="text-align:right">절약가능</div><div style="text-align:right">상태</div>
+    </div>
+    <div id="adminProductList"></div>
+  </div>
+</div>
+
+<!-- ── ADMIN USERS ── -->
+<div id="view-aUsers" class="view">
+  <div class="page-title">사용자 현황</div>
+  <div class="page-sub">CareBAG은 소비자(구매자) 전용 서비스입니다</div>
+  <div class="alert-banner amber">
+    <span class="ab-icon">ℹ️</span>
+    <div class="ab-text">
+      <div class="ab-title">비즈니스 구조 — 판매자는 없어요</div>
+      <div class="ab-sub">유저(구매자)가 쇼핑몰에서 결제 → 케어백에 등록 → 가격 하락 시 해당 쇼핑몰에 직접 환불 신청. 차액은 쇼핑몰이 유저에게 지급. 케어백은 타이밍을 알려주는 역할, 수익은 구독료·제휴 수수료에서 발생합니다.</div>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-head"><div class="table-title">유저 목록</div><span class="pill pill-gray">시뮬레이션 포함</span></div>
+    <div class="admin-table-head" style="grid-template-columns:28px 1fr 120px 60px 100px 70px;border-bottom:1px solid var(--border)">
+      <div>#</div><div>유저</div><div>가입일</div><div>상품수</div><div style="text-align:right">절약금액</div><div style="text-align:right">플랜</div>
+    </div>
+    <div id="adminUserList"></div>
+  </div>
+</div>
+
+<!-- ── ADMIN REVENUE ── -->
+<div id="view-aRevenue" class="view">
+  <div class="page-title">수익 모델</div>
+  <div class="page-sub">CareBAG의 수익화 구조와 시뮬레이터</div>
+  <div class="revenue-hero">
+    <div class="rh-label">예상 월 수익 (시뮬레이션)</div>
+    <div class="rh-value" id="revenueVal">₩294,000</div>
+    <div class="rh-sub">유저 수 기반 자동 계산 · 실제 수익과 다를 수 있음</div>
+  </div>
+  <div class="model-grid">
+    <div class="model-card"><div class="mc-icon">👤</div><div class="mc-title">구독 B2C</div><div class="mc-desc">무료 5개 / 프리미엄 무제한 + 자동추적</div><div class="mc-amount">₩4,900/월</div></div>
+    <div class="model-card"><div class="mc-icon">🤝</div><div class="mc-title">제휴 수수료</div><div class="mc-desc">환불 후 재구매 시 제휴 링크 통해 쇼핑몰에서 수수료</div><div class="mc-amount">거래액 2~5%</div></div>
+    <div class="model-card"><div class="mc-icon">🏢</div><div class="mc-title">B2B API</div><div class="mc-desc">카드사·은행에 화이트라벨 솔루션 제공</div><div class="mc-amount">₩500만~/월</div></div>
+  </div>
+  <div class="settings-card">
+    <div class="settings-head">📊 수익 시뮬레이터</div>
+    <div class="settings-row">
+      <div><div class="sr-title">가입 유저 수</div></div>
+      <input type="range" id="simU" min="0" max="10000" value="500" step="100" oninput="calcRev()" style="flex:1;margin:0 16px;accent-color:var(--accent)">
+      <span id="simUVal" style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);min-width:80px;text-align:right">500명</span>
+    </div>
+    <div class="settings-row">
+      <div><div class="sr-title">프리미엄 전환율</div></div>
+      <input type="range" id="simC" min="1" max="50" value="12" oninput="calcRev()" style="flex:1;margin:0 16px;accent-color:var(--accent)">
+      <span id="simCVal" style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);min-width:80px;text-align:right">12%</span>
+    </div>
+    <div class="settings-row" style="background:var(--accent-bg);border-radius:0 0 var(--r-lg) var(--r-lg)">
+      <div style="font-size:13px;font-weight:700;color:var(--accent)">예상 월 구독 수익</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--accent)" id="simResult">₩294,000</div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div><!-- body-wrap -->
+</div><!-- app -->
+
+<!-- ADD MODAL -->
+<div class="overlay" id="addOverlay" onclick="bgClose(event,'addOverlay')">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">구매 상품 등록</div>
+      <button class="modal-close" onclick="closeOverlay('addOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">이모지</label>
+        <div class="emoji-grid" id="emojiGrid"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">상품명 *</label>
+        <input class="form-input" id="fName" placeholder="예: 다이슨 에어랩 컴플리트">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">구매 금액 (원) *</label>
+          <input class="form-input" id="fPaid" type="number" placeholder="589000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">현재 판매가 (원)</label>
+          <input class="form-input" id="fCurr" type="number" placeholder="비워두면 동일">
+          <div class="form-hint">낮으면 즉시 절약 알림!</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">쇼핑몰 *</label>
+          <select class="form-select" id="fShop">
+            <option>쿠팡</option><option>네이버쇼핑</option><option>11번가</option>
+            <option>G마켓</option><option>무신사</option><option>올리브영</option><option>SSG</option><option>기타</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">구매일 *</label>
+          <input class="form-input" id="fDate" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">환불 가능 기간</label>
+        <select class="form-select" id="fRefund">
+          <option value="7">7일</option><option value="14">14일</option>
+          <option value="30" selected>30일</option><option value="60">60일</option><option value="90">90일</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">메모</label>
+        <input class="form-input" id="fMemo" placeholder="선택 입력">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeOverlay('addOverlay')">취소</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveProduct()">등록하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="detailOverlay" onclick="bgClose(event,'detailOverlay')">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="detailTitle">상세 정보</div>
+      <button class="modal-close" onclick="closeOverlay('detailOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer" id="detailFooter"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ═══ DATA ═══ */
+const EMOJIS = ['📱','💻','🎧','👟','👗','💄','🛋️','🌀','☕','📷','⌨️','🖥️','🎮','📚','🧴','🎒','⌚','🧸','🍳','✈️','📦','🎵','🔑','🏋️','🌿'];
+const SHOPS  = ['쿠팡','네이버쇼핑','11번가','G마켓','무신사','올리브영','SSG','기타'];
+
+const now = new Date();
+const d = n => new Date(now - n*86400000).toISOString().split('T')[0];
+
+let products = JSON.parse(localStorage.getItem('cb2_products') || 'null') || [
+  {id:1,emoji:'🌀',name:'다이슨 V15 디텍트',shop:'쿠팡',pricePaid:879000,priceCurrent:855000,dateStr:d(3),refundDays:30,memo:'데모 데이터예요! 직접 등록해보세요 👆'},
+  {id:2,emoji:'🎧',name:'소니 WH-1000XM5',shop:'네이버쇼핑',pricePaid:389000,priceCurrent:359000,dateStr:d(5),refundDays:7,memo:''},
+  {id:3,emoji:'📱',name:'갤럭시 버즈3 Pro',shop:'삼성닷컴',pricePaid:249000,priceCurrent:249000,dateStr:d(24),refundDays:30,memo:''},
+  {id:4,emoji:'⌨️',name:'로지텍 MX Keys S',shop:'11번가',pricePaid:129000,priceCurrent:119000,dateStr:d(10),refundDays:14,memo:''},
+];
+let history = JSON.parse(localStorage.getItem('cb2_history') || 'null') || [
+  {id:10,emoji:'☕',name:'드롱기 에스프레소',desc:'₩429,000 → ₩399,000 차액 환불',amount:30000,date:'2025.03.05'},
+  {id:11,emoji:'📚',name:'에어팟 프로 2세대',desc:'₩359,000 → ₩329,000 차액 환불',amount:30000,date:'2025.02.20'},
+];
+
+const MOCK_USERS = [
+  {id:'u_0001',email:'kim***@gmail.com',items:4,savings:60000,plan:'프리미엄',joined:'2025.01.12'},
+  {id:'u_0042',email:'lee***@naver.com',items:7,savings:38000,plan:'프리미엄',joined:'2025.02.03'},
+  {id:'u_0105',email:'park***@kakao.com',items:3,savings:0,plan:'무료',joined:'2025.03.01'},
+  {id:'u_0218',email:'choi***@gmail.com',items:9,savings:94000,plan:'프리미엄',joined:'2025.01.28'},
+];
+
+let selEmoji='📦', curFilter='all', curMode='user';
+
+/* ═══ UTILS ═══ */
+const fmt = n => '₩' + Number(n).toLocaleString('ko-KR');
+const today = () => new Date().toISOString().split('T')[0];
+function daysLeft(p){return Math.ceil((new Date(p.dateStr).getTime()+p.refundDays*86400000-Date.now())/86400000)}
+function dropAmt(p){return Math.max(0,p.pricePaid-(p.priceCurrent||p.pricePaid))}
+function statusOf(p){const d=daysLeft(p),drop=dropAmt(p)>0;if(d<=0)return'expired';if(d<=7&&drop)return'urgent-drop';if(d<=7)return'urgent';if(drop)return'drop';return'safe'}
+function saveData(){localStorage.setItem('cb2_products',JSON.stringify(products));localStorage.setItem('cb2_history',JSON.stringify(history))}
+
+/* ═══ INIT ═══ */
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('fDate').value=today();
+  // emoji grid
+  const grid=document.getElementById('emojiGrid');
+  EMOJIS.forEach(e=>{
+    const b=document.createElement('button');
+    b.className='emoji-btn'+(e===selEmoji?' sel':'');
+    b.textContent=e;b.type='button';
+    b.onclick=()=>{grid.querySelectorAll('.emoji-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');selEmoji=e};
+    grid.appendChild(b);
+  });
+  calcRev();
+  render();
+});
+
+/* ═══ RENDER ═══ */
+function render(){
+  const total=products.length;
+  const urgent=products.filter(p=>{const d=daysLeft(p);return d>0&&d<=7}).length;
+  const drops=products.filter(p=>dropAmt(p)>0&&daysLeft(p)>0).length;
+  const savings=history.reduce((s,h)=>s+h.amount,0);
+
+  // topbar
+  document.getElementById('topSavings').textContent='💰 절약 '+fmt(savings);
+  document.getElementById('sfVal').textContent=fmt(savings);
+  document.getElementById('caresBadge').textContent=total;
+
+  // user stats
+  setText('sTotal',total);setText('sUrgent',urgent);setText('sDrop',drops);setText('sSavings',fmt(savings));
+
+  // admin stats
+  setText('aItems',total+2841);setText('aSaved',fmt(savings+12840000));
+  setText('aDrops',drops+41);setText('aUrgent',urgent+23);setText('aRefunds',history.length+318);
+
+  renderAlerts(drops>0?products.filter(p=>dropAmt(p)>0&&daysLeft(p)>0)[0]:null, urgent);
+  renderDash();
+  renderCare();
+  renderHistory();
+  renderAdminProducts();
+  renderAdminUsers(savings);
+}
+
+function setText(id,v){const el=document.getElementById(id);if(el)el.textContent=v}
+
+function renderAlerts(dropItem, urgentCount){
+  const area=document.getElementById('dashAlerts');
+  let html='';
+  if(dropItem){
+    html+=`<div class="alert-banner green"><span class="ab-icon">📉</span><div class="ab-text"><div class="ab-title">${dropItem.name} 가격 하락 — ${fmt(dropAmt(dropItem))} 절약 가능</div><div class="ab-sub">환불 후 재구매하면 차액을 돌려받을 수 있어요 · D-${daysLeft(dropItem)} 환불 가능</div></div><button class="btn btn-green btn-sm" onclick="doRefund(${dropItem.id})">환불 신청</button></div>`;
+  }
+  if(urgentCount>0){
+    html+=`<div class="alert-banner red"><span class="ab-icon">⏰</span><div class="ab-text"><div class="ab-title">환불 기간 임박 상품 ${urgentCount}개</div><div class="ab-sub">D-7 이내 환불 가능 기간이 끝나요. 지금 확인하세요!</div></div></div>`;
+  }
+  area.innerHTML=html;
+}
+
+function buildRow(p){
+  const d=daysLeft(p),drop=dropAmt(p),st=statusOf(p);
+  const cdColor=d<=0?'var(--muted)':d<=3?'var(--red)':d<=7?'var(--amber)':'var(--green)';
+  const cdText=d<=0?'만료':`D-${d}`;
+
+  const priceHtml=drop>0
+    ?`<div class="pr-price"><div class="current" style="color:var(--green)">${fmt(p.priceCurrent)}</div><div class="original">${fmt(p.pricePaid)}</div><span class="pill pill-green" style="margin-top:3px;display:inline-flex">▼ ${fmt(drop)}</span></div>`
+    :`<div class="pr-price"><div class="current">${fmt(p.pricePaid)}</div></div>`;
+
+  const actionHtml=drop>0&&d>0
+    ?`<button class="btn btn-green btn-sm" onclick="event.stopPropagation();doRefund(${p.id})">환불 신청</button>`
+    :st==='urgent'?`<span class="pill pill-red">기간 임박</span>`
+    :st==='expired'?`<span class="pill pill-gray">만료</span>`
+    :`<span class="pill pill-gray">추적 중</span>`;
+
+  return `<div class="product-row" onclick="openDetail(${p.id})">
+    <div class="pr-emoji">${p.emoji}</div>
+    <div><div class="pr-name">${p.name}</div><div class="pr-meta">${p.shop} · ${p.dateStr}</div></div>
+    ${priceHtml}
+    <div class="pr-cd"><div class="pr-cd-num" style="color:${cdColor}">${cdText}</div><div class="pr-cd-label">${d<=0?'환불불가':'환불가능'}</div></div>
+    <div class="pr-action">${actionHtml}</div>
+  </div>`;
+}
+
+function renderDash(){
+  const el=document.getElementById('dashList');
+  const list=[...products].filter(p=>daysLeft(p)>0).sort((a,b)=>{
+    const r={'urgent-drop':0,urgent:1,drop:2,safe:3};
+    return(r[statusOf(a)]??4)-(r[statusOf(b)]??4);
+  }).slice(0,6);
+  el.innerHTML=list.length?list.map(buildRow).join(''):`<div class="empty"><div class="empty-icon">○</div><div class="empty-title">등록된 상품 없음</div><div class="empty-desc">+ 구매 등록 버튼으로 첫 상품을 추가해보세요</div></div>`;
+}
+
+function renderCare(){
+  let list=[...products];
+  if(curFilter==='urgent') list=list.filter(p=>{const d=daysLeft(p);return d>0&&d<=7});
+  else if(curFilter==='drop') list=list.filter(p=>dropAmt(p)>0&&daysLeft(p)>0);
+  else if(curFilter==='safe') list=list.filter(p=>daysLeft(p)>7&&dropAmt(p)===0);
+  setText('careTitle',`전체 ${products.length}건`);
+  const el=document.getElementById('careList');
+  el.innerHTML=list.length?list.map(buildRow).join(''):`<div class="empty"><div class="empty-icon">○</div><div class="empty-title">해당 상품 없음</div><div class="empty-desc">다른 필터를 선택하거나 상품을 추가해보세요</div></div>`;
+}
+
+function renderHistory(){
+  const savings=history.reduce((s,h)=>s+h.amount,0);
+  const wrap=document.getElementById('historyWrap');
+  if(!history.length){wrap.innerHTML=`<div class="empty"><div class="empty-icon">○</div><div class="empty-title">히스토리 없음</div><div class="empty-desc">환불을 완료하면 여기서 절약 내역을 볼 수 있어요</div></div>`;return}
+  wrap.innerHTML=`<div class="table-head"><div class="table-title">총 ${history.length}건 · ${fmt(savings)} 절약</div></div>`+[...history].reverse().map(h=>`
+    <div class="history-row">
+      <div class="hi-icon">${h.emoji}</div>
+      <div style="flex:1"><div class="hi-name">${h.name}</div><div class="hi-desc">${h.desc}</div></div>
+      <div><div class="hi-amount">+${fmt(h.amount)}</div><div class="hi-date">${h.date}</div></div>
+    </div>`).join('');
+}
+
+function renderAdminProducts(){
+  const el=document.getElementById('adminProductList');
+  if(!el) return;
+  el.innerHTML=products.map(p=>`
+    <div class="admin-row" style="grid-template-columns:36px 1fr 90px 100px 90px 80px">
+      <div style="font-size:20px;text-align:center">${p.emoji}</div>
+      <div style="font-weight:600">${p.name}</div>
+      <div style="color:var(--sub)">${p.shop}</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace">${fmt(p.pricePaid)}</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;color:${dropAmt(p)>0?'var(--green)':'var(--muted)'}">${dropAmt(p)>0?fmt(dropAmt(p)):'—'}</div>
+      <div style="text-align:right">${dropAmt(p)>0&&daysLeft(p)>0?'<span class="pill pill-green">환불가능</span>':'<span class="pill pill-gray">추적중</span>'}</div>
+    </div>`).join('') || `<div class="empty"><div class="empty-icon">○</div><div class="empty-title">상품 없음</div></div>`;
+}
+
+function renderAdminUsers(currentSavings){
+  const el=document.getElementById('adminUserList');
+  if(!el) return;
+  const all=[{id:'u_0000',email:'현재 사용자',items:products.length,savings:currentSavings,plan:'무료',joined:'오늘',current:true},...MOCK_USERS];
+  el.innerHTML=all.map((u,i)=>`
+    <div class="admin-row" style="grid-template-columns:28px 1fr 120px 60px 100px 70px;background:${u.current?'var(--accent-bg)':'transparent'}">
+      <div style="color:var(--muted);font-size:11px">${i+1}</div>
+      <div><div style="font-weight:600;font-size:13px">${u.id}</div><div style="font-size:11px;color:var(--muted)">${u.email}</div></div>
+      <div style="font-size:12px;color:var(--sub)">${u.joined}</div>
+      <div style="font-weight:600">${u.items}개</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:600">${fmt(u.savings)}</div>
+      <div style="text-align:right"><span class="pill ${u.plan==='프리미엄'?'pill-blue':'pill-gray'}">${u.plan}</span></div>
+    </div>`).join('');
+}
+
+/* ═══ VIEWS ═══ */
+function goView(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('#sidebarUser .nav-item').forEach(n=>n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else{
+    const btns=document.querySelectorAll('#sidebarUser .nav-item');
+    btns.forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes(`'${name}'`))b.classList.add('active')});
+  }
+}
+function goAdminView(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('#sidebarAdmin .nav-item').forEach(n=>n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+}
+function setFilter(f,el){
+  curFilter=f;
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderCare();
+}
+
+/* ═══ MODE ═══ */
+function setMode(mode){
+  curMode=mode;
+  document.getElementById('btnUser').classList.toggle('active',mode==='user');
+  document.getElementById('btnAdmin').classList.toggle('active',mode==='admin');
+  document.getElementById('sidebarUser').style.display=mode==='user'?'':'none';
+  document.getElementById('sidebarAdmin').style.display=mode==='admin'?'':'none';
+  document.getElementById('topAddBtn').style.display=mode==='user'?'':'none';
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  if(mode==='admin'){
+    document.getElementById('view-aDash').classList.add('active');
+    document.querySelectorAll('#sidebarAdmin .nav-item')[0].classList.add('active');
+    renderAdminProducts();
+    renderAdminUsers(history.reduce((s,h)=>s+h.amount,0));
+  } else {
+    document.getElementById('view-dash').classList.add('active');
+    document.querySelectorAll('#sidebarUser .nav-item')[0].classList.add('active');
+  }
+}
+
+/* ═══ MODAL ═══ */
+function openAdd(){document.getElementById('fDate').value=today();openOverlay('addOverlay')}
+function openOverlay(id){document.getElementById(id).classList.add('show')}
+function closeOverlay(id){document.getElementById(id).classList.remove('show')}
+function bgClose(e,id){if(e.target.id===id)closeOverlay(id)}
+
+/* ═══ SAVE ═══ */
+function saveProduct(){
+  const name=document.getElementById('fName').value.trim();
+  const paid=parseInt(document.getElementById('fPaid').value);
+  const curr=parseInt(document.getElementById('fCurr').value)||0;
+  const shop=document.getElementById('fShop').value;
+  const date=document.getElementById('fDate').value;
+  const refund=parseInt(document.getElementById('fRefund').value);
+  const memo=document.getElementById('fMemo').value.trim();
+  if(!name){showToast('상품명을 입력해주세요');return}
+  if(!paid){showToast('구매 금액을 입력해주세요');return}
+  products.push({id:Date.now(),emoji:selEmoji,name,shop,pricePaid:paid,priceCurrent:curr||paid,dateStr:date,refundDays:refund,memo});
+  saveData();closeOverlay('addOverlay');
+  document.getElementById('fName').value='';document.getElementById('fPaid').value='';
+  document.getElementById('fCurr').value='';document.getElementById('fMemo').value='';
+  render();showToast('✓ '+name+' 등록 완료');
+  if(curr>0&&curr<paid)setTimeout(()=>showToast('📉 이미 가격이 내렸어요! 환불 가능'),2200);
+}
+
+/* ═══ DETAIL ═══ */
+function openDetail(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  const d=daysLeft(p),drop=dropAmt(p);
+  const used=p.refundDays-Math.max(d,0);
+  const pct=Math.min(100,Math.round(used/p.refundDays*100));
+  const barColor=pct>80?'var(--red)':pct>50?'var(--amber)':'var(--green)';
+  document.getElementById('detailTitle').textContent=p.name;
+  document.getElementById('detailBody').innerHTML=`
+    <div style="text-align:center;padding:16px 0 24px;font-size:56px">${p.emoji}</div>
+    <div class="detail-grid">
+      ${[['쇼핑몰',p.shop],['구매일',p.dateStr],['구매 금액',fmt(p.pricePaid)],
+         ['현재 가격',fmt(p.priceCurrent)],
+         ['절약 가능',drop>0?fmt(drop):'없음'],
+         ['환불 기한',d<=0?'만료':'D-'+d],
+         ...(p.memo?[['메모',p.memo]]:[])
+        ].map(([k,v])=>`<div class="detail-row"><span class="dr-label">${k}</span><span class="dr-value" style="color:${k==='절약 가능'&&drop>0?'var(--green)':k==='환불 기한'&&d<=7&&d>0?'var(--red)':'var(--text)'}">${v}</span></div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-bottom:6px">
+      <span>환불 기간 소진</span><span>${used}일 / ${p.refundDays}일 (${pct}%)</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="dpfill" style="width:0%;background:${barColor}"></div></div>`;
+  document.getElementById('detailFooter').innerHTML=`
+    ${drop>0&&d>0?`<button class="btn btn-green" style="flex:2;justify-content:center" onclick="doRefund(${p.id});closeOverlay('detailOverlay')">💸 환불 신청 (${fmt(drop)} 절약)</button>`:`<button class="btn btn-secondary" style="flex:2;justify-content:center;opacity:.4;pointer-events:none">환불 불가</button>`}
+    <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="deleteProd(${p.id})">삭제</button>`;
+  openOverlay('detailOverlay');
+  setTimeout(()=>{const el=document.getElementById('dpfill');if(el)el.style.width=pct+'%'},80);
+}
+
+/* ═══ REFUND ═══ */
+function doRefund(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  const drop=dropAmt(p);if(!drop){showToast('현재 가격 하락이 없어요');return}
+  history.push({id:Date.now(),emoji:p.emoji,name:p.name,desc:`${fmt(p.pricePaid)} → ${fmt(p.priceCurrent)} 차액 환불`,amount:drop,date:new Date().toLocaleDateString('ko-KR')});
+  p.pricePaid=p.priceCurrent;
+  saveData();render();showToast('🎉 환불 신청 완료 — '+fmt(drop)+' 절약!');confettiPop();
+}
+
+function deleteProd(id){
+  if(!confirm('삭제할까요?'))return;
+  products=products.filter(p=>p.id!==id);
+  saveData();closeOverlay('detailOverlay');render();showToast('삭제 완료');
+}
+
+function resetAll(){
+  if(!confirm('모든 데이터를 초기화할까요?'))return;
+  products=[];history=[];saveData();render();showToast('초기화 완료');
+}
+
+/* ═══ REVENUE SIM ═══ */
+function calcRev(){
+  const u=parseInt(document.getElementById('simU').value);
+  const c=parseInt(document.getElementById('simC').value);
+  const r=Math.round(u*(c/100)*4900);
+  setText('simUVal',u.toLocaleString()+'명');
+  setText('simCVal',c+'%');
+  setText('simResult',fmt(r));
+  setText('revenueVal',fmt(r));
+}
+
+/* ═══ TOAST ═══ */
+let toastTimer;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+// alias
+window.toast=showToast;
+
+/* ═══ CONFETTI ═══ */
+function confettiPop(){
+  const colors=['#1a6ef2','#0a8a5c','#d63b3b','#b06800','#7c3aed'];
+  for(let i=0;i<35;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='cp';
+      const s=5+Math.random()*8;
+      el.style.cssText=`left:${Math.random()*100}vw;top:-10px;width:${s}px;height:${s}px;background:${colors[0|Math.random()*colors.length]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.2+Math.random()*1.5}s;animation-delay:0s`;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),3000);
+    },i*40);
+  }
+}
+</script>
+</body>
+</html>
